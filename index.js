@@ -23,12 +23,31 @@ const client = new MongoClient(uri, {
   },
 });
 
+// middleware
+const verifyToken = (req, res, next) => {
+  if (!req.headers.authorization) {
+    return res.status(401).send({ message: "unAuthorized user" });
+  }
+
+  const token = req.headers.authorization.split(" ")[1];
+  jwt.verify(token, process.env.Token_Secret, (err, decoded) => {
+    if (err) {
+      console.log(err);
+      return res.status(403).send({ message: "forbidden access" });
+    }
+    req.decoded = decoded;
+    next();
+  });
+};
+
+const db = client.db("nova-news");
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
 
-    const userCollection = client.db("nova-news").collection("users");
+    const userCollection = db.collection("users");
+    const articleCollection = db.collection("articles");
 
     // make and send token
     app.post("/jwt", (req, res) => {
@@ -53,6 +72,13 @@ async function run() {
         const result = await userCollection.insertOne(currentUser);
         res.send(result);
       }
+    });
+
+    // add article in the db
+    app.post("/article", verifyToken, async (req, res) => {
+      const article = req.body;
+      const result = await articleCollection.insertOne(article);
+      res.send(result);
     });
 
     // Send a ping to confirm a successful connection
