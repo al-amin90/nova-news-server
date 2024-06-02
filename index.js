@@ -1,6 +1,7 @@
 const { MongoClient, ServerApiVersion } = require("mongodb");
 const express = require("express");
 const cors = require("cors");
+const jwt = require("jsonwebtoken");
 const app = express();
 
 // config
@@ -26,6 +27,33 @@ async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
+
+    const userCollection = client.db("nova-news").collection("users");
+
+    // make and send token
+    app.post("/jwt", (req, res) => {
+      const userEmail = req.body;
+      console.log(userEmail);
+      const token = jwt.sign({ data: userEmail }, process.env.Token_Secret, {
+        expiresIn: "365d",
+      });
+      res.send({ token });
+    });
+
+    // save users
+    app.post("/users", async (req, res) => {
+      const currentUser = req.body;
+      const email = req.body.email;
+
+      const query = { email: email };
+      const isLogin = await userCollection.findOne(query);
+      if (isLogin?.email) {
+        res.send(isLogin);
+      } else {
+        const result = await userCollection.insertOne(currentUser);
+        res.send(result);
+      }
+    });
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
