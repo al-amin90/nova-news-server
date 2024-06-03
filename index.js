@@ -124,7 +124,7 @@ async function run() {
     });
 
     // change articles state in the db
-    app.patch("/article/:id", verifyToken, async (req, res) => {
+    app.patch("/article/:id", verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const articleInfo = req.body;
       delete articleInfo.id;
@@ -138,10 +138,26 @@ async function run() {
       res.send(result);
     });
 
-    // --------- article related api -----------
+    // change articles state in the db
+    app.delete("/article/:id", verifyToken, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      console.log(id);
+
+      const query = { _id: new ObjectId(id) };
+      const result = await articleCollection.deleteOne(query);
+      res.send(result);
+    });
+
+    // --------- users related api -----------
     // get all verified article from  the db
     app.get("/articles", async (req, res) => {
       const query = { status: "verified" };
+      const result = await articleCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    app.get("/premium-articles", async (req, res) => {
+      const query = { isPremium: true };
       const result = await articleCollection.find(query).toArray();
       res.send(result);
     });
