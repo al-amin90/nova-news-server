@@ -1,4 +1,4 @@
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const express = require("express");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
@@ -65,7 +65,6 @@ async function run() {
       const email = req.decoded.data.email;
 
       const result = await userCollection.findOne({ email });
-      console.log("working on verify", email, result?.isAdmin);
       if (!result || !result?.isAdmin) {
         return res.status(403).send({ message: "forbidden access" });
       }
@@ -118,13 +117,34 @@ async function run() {
       res.send(user);
     });
 
-    // --------- article related api -----------
-    app.get("/articles", async (req, res) => {
+    // get all article from  the db
+    app.get("/allArticles", verifyToken, verifyAdmin, async (req, res) => {
       const result = await articleCollection.find().toArray();
       res.send(result);
     });
 
-    // get all article from  the db
+    // change articles state in the db
+    app.patch("/article/:id", verifyToken, async (req, res) => {
+      const id = req.params.id;
+      const articleInfo = req.body;
+      delete articleInfo.id;
+      console.log(id, articleInfo);
+
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: articleInfo,
+      };
+      const result = await articleCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
+
+    // --------- article related api -----------
+    // get all verified article from  the db
+    app.get("/articles", async (req, res) => {
+      const query = { status: "verified" };
+      const result = await articleCollection.find(query).toArray();
+      res.send(result);
+    });
 
     // add article in the db
     app.post("/article", verifyToken, async (req, res) => {
