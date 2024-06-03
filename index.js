@@ -41,14 +41,6 @@ const verifyToken = (req, res, next) => {
 };
 
 // make and send token
-app.post("/jwt", (req, res) => {
-  const userEmail = req.body;
-  console.log(userEmail);
-  const token = jwt.sign({ data: userEmail }, process.env.Token_Secret, {
-    expiresIn: "365d",
-  });
-  res.send({ token });
-});
 
 const db = client.db("nova-news");
 async function run() {
@@ -58,6 +50,15 @@ async function run() {
 
     const userCollection = db.collection("users");
     const articleCollection = db.collection("articles");
+
+    app.post("/jwt", (req, res) => {
+      const userEmail = req.body;
+      console.log(userEmail);
+      const token = jwt.sign({ data: userEmail }, process.env.Token_Secret, {
+        expiresIn: "365d",
+      });
+      res.send({ token });
+    });
 
     // verify admin
     const verifyAdmin = async (req, res, next) => {
@@ -111,13 +112,19 @@ async function run() {
     });
 
     // is he/she admin
-    app.get("/user/:email", verifyToken, async (req, res) => {
+    app.get("/user/:email", async (req, res) => {
       const email = req.params.email;
       const user = await userCollection.findOne({ email });
       res.send(user);
     });
 
     // --------- article related api -----------
+    app.get("/articles", async (req, res) => {
+      const result = await articleCollection.find().toArray();
+      res.send(result);
+    });
+
+    // get all article from  the db
 
     // add article in the db
     app.post("/article", verifyToken, async (req, res) => {
