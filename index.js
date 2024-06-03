@@ -124,7 +124,7 @@ async function run() {
     });
 
     // change articles state in the db
-    app.patch("/article/:id", verifyToken, verifyAdmin, async (req, res) => {
+    app.patch("/article/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const articleInfo = req.body;
       delete articleInfo.id;
@@ -132,14 +132,16 @@ async function run() {
 
       const filter = { _id: new ObjectId(id) };
       const updateDoc = {
-        $set: articleInfo,
+        $set: {
+          ...articleInfo,
+        },
       };
       const result = await articleCollection.updateOne(filter, updateDoc);
       res.send(result);
     });
 
-    // change articles state in the db
-    app.delete("/article/:id", verifyToken, verifyAdmin, async (req, res) => {
+    // delete articles in the db
+    app.delete("/article/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       console.log(id);
 
@@ -149,13 +151,35 @@ async function run() {
     });
 
     // --------- users related api -----------
-    // get all verified article from  the db
+    // get all approved article from  the db
     app.get("/articles", async (req, res) => {
-      const query = { status: "verified" };
+      const query = { status: "approved" };
       const result = await articleCollection.find(query).toArray();
       res.send(result);
     });
 
+    // get single article from  the db
+    app.get("/article/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await articleCollection.findOne(query);
+      res.send(result);
+    });
+
+    // get all approved article from  the db
+    app.get("/articles/:email", verifyToken, async (req, res) => {
+      const email = req.params.email;
+
+      if (email !== req.decoded.data.email) {
+        return res.status(401).send({ message: "unauthorized token" });
+      }
+
+      const query = { "author.email": email };
+      const result = await articleCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    // get premium articles
     app.get("/premium-articles", async (req, res) => {
       const query = { isPremium: true };
       const result = await articleCollection.find(query).toArray();
