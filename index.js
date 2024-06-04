@@ -6,6 +6,7 @@ const app = express();
 
 // config
 require("dotenv").config();
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const port = process.env.PORT || 5000;
 
 // middleware
@@ -87,6 +88,25 @@ async function run() {
       }
     });
 
+    // payment intent
+    app.post("/create-payment-intent", async (req, res) => {
+      const price = req.body.price;
+      const priceInCent = parseFloat(price) * 100;
+
+      console.log(priceInCent);
+      if (!price || priceInCent < 1) return;
+      const { client_secret } = await stripe.paymentIntents.create({
+        amount: priceInCent,
+        currency: "usd",
+        // In the latest version of the API, specifying the `automatic_payment_methods` parameter is optional because Stripe enables its functionality by default.
+        automatic_payment_methods: {
+          enabled: true,
+        },
+      });
+
+      res.send({ clientSecret: client_secret });
+    });
+
     // ----------- admin related apis ------------
 
     // get all users
@@ -152,7 +172,7 @@ async function run() {
     });
 
     // get all publisher
-    app.get("/publisher", verifyToken, async (req, res) => {
+    app.get("/publisher", async (req, res) => {
       const result = await publisherCollection.find().toArray();
       res.send(result);
     });
