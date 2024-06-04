@@ -50,6 +50,7 @@ async function run() {
 
     const userCollection = db.collection("users");
     const articleCollection = db.collection("articles");
+    const publisherCollection = db.collection("publisher");
 
     app.post("/jwt", (req, res) => {
       const userEmail = req.body;
@@ -147,6 +148,19 @@ async function run() {
 
       const query = { _id: new ObjectId(id) };
       const result = await articleCollection.deleteOne(query);
+      res.send(result);
+    });
+
+    // get all publisher
+    app.get("/publisher", verifyToken, async (req, res) => {
+      const result = await publisherCollection.find().toArray();
+      res.send(result);
+    });
+
+    // add publisher api
+    app.post("/publisher", async (req, res) => {
+      const publisher = req.body;
+      const result = await publisherCollection.insertOne(publisher);
       res.send(result);
     });
 
