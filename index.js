@@ -227,6 +227,21 @@ async function run() {
       res.send(result);
     });
 
+    // update viewCount article in the db
+    app.patch("/articleViewCount/:id", async (req, res) => {
+      const id = req.params.id;
+      console.log("called");
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $inc: { viewCount: 1 },
+      };
+      const result = await articleCollection.updateOne(filter, updateDoc);
+      if (result.modifiedCount === 0) {
+        res.status(404).send("Article not found");
+      }
+      res.send(result);
+    });
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
