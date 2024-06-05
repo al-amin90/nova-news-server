@@ -55,7 +55,6 @@ async function run() {
 
     app.post("/jwt", (req, res) => {
       const userEmail = req.body;
-      console.log(userEmail);
       const token = jwt.sign({ data: userEmail }, process.env.Token_Secret, {
         expiresIn: "365d",
       });
@@ -71,6 +70,32 @@ async function run() {
         return res.status(403).send({ message: "forbidden access" });
       }
       next();
+    };
+
+    // -------------verify premium expiration date time--------
+    const verifyPremium = async (email) => {
+      // const email = req.decoded.data.email;
+      // const email = req.params.email;
+
+      const user = await userCollection.findOne({ email });
+
+      if (user.premiumTaken) {
+        const currentTime = new Date();
+        const expirationTime = new Date(user.premiumTaken);
+
+        if (currentTime > expirationTime) {
+          const updateDoc = {
+            $set: { premiumTaken: "" },
+          };
+
+          await userCollection.updateOne({ email }, updateDoc);
+          console.log("use premium time end");
+          return { isSubscription: false };
+        } else {
+          return { isSubscription: true };
+        }
+      }
+      return { isSubscription: false };
     };
 
     // save users in the db after login and singup
@@ -93,7 +118,6 @@ async function run() {
       const price = req.body.price;
       const priceInCent = parseFloat(price) * 100;
 
-      console.log(priceInCent);
       if (!price || priceInCent < 1) return;
       const { client_secret } = await stripe.paymentIntents.create({
         amount: priceInCent,
@@ -105,6 +129,27 @@ async function run() {
       });
 
       res.send({ clientSecret: client_secret });
+    });
+
+    // make a user premium
+    app.post("/subscription", verifyToken, async (req, res) => {
+      const { email, time } = req.body;
+      const expirationDate = new Date();
+
+      if (time === 1) {
+        expirationDate.setMinutes(expirationDate.getMinutes() + 1);
+      } else if (time === 5) {
+        expirationDate.setDate(expirationDate.getDate() + 5);
+      } else if (time === 10) {
+        expirationDate.setDate(expirationDate.getDate() + 10);
+      }
+
+      const filter = { email };
+      const updateDoc = {
+        $set: { premiumTaken: expirationDate.toISOString() },
+      };
+      const result = await userCollection.updateOne(filter, updateDoc);
+      res.send(result);
     });
 
     // ----------- admin related apis ------------
@@ -119,7 +164,6 @@ async function run() {
     app.patch("/users/:email", verifyToken, verifyAdmin, async (req, res) => {
       const email = req.params.email;
       const isAdmin = req.body;
-      console.log(isAdmin, email);
 
       const filter = { email: email };
       const updateDoc = {
@@ -149,7 +193,6 @@ async function run() {
       const id = req.params.id;
       const articleInfo = req.body;
       delete articleInfo.id;
-      console.log(id, articleInfo);
 
       const filter = { _id: new ObjectId(id) };
       const updateDoc = {
@@ -164,7 +207,6 @@ async function run() {
     // delete articles in the db
     app.delete("/article/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
-      console.log(id);
 
       const query = { _id: new ObjectId(id) };
       const result = await articleCollection.deleteOne(query);
@@ -193,11 +235,28 @@ async function run() {
     });
 
     // get single article from  the db
-    app.get("/article/:id", async (req, res) => {
+    app.get("/article/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
+      const email = req.decoded.data.email;
+
+      // get user Premium state
+      const { isSubscription } = await verifyPremium(email);
+      console.log(isSubscription);
+
+      // get the article from articles
       const query = { _id: new ObjectId(id) };
       const result = await articleCollection.findOne(query);
-      res.send(result);
+
+      // console.log(result);
+      if (isSubscription === true) {
+        return res.send(result);
+      } else {
+        if (result?.isPremium === true) {
+          return res.status(404).send({ message: "Only for Premium User" });
+        } else {
+          res.send(result);
+        }
+      }
     });
 
     // get all approved article from  the db
