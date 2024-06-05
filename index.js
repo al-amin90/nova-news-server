@@ -79,7 +79,7 @@ async function run() {
 
       const user = await userCollection.findOne({ email });
 
-      if (user.premiumTaken) {
+      if (user?.premiumTaken) {
         const currentTime = new Date();
         const expirationTime = new Date(user.premiumTaken);
 
@@ -282,8 +282,27 @@ async function run() {
     // add article in the db
     app.post("/article", verifyToken, async (req, res) => {
       const article = req.body;
-      const result = await articleCollection.insertOne(article);
-      res.send(result);
+      const email = req.decoded.data.email;
+
+      const { isSubscription } = await verifyPremium();
+
+      if (isSubscription === true) {
+        const result = await articleCollection.insertOne(article);
+        return res.send(result);
+      } else {
+        const count = await articleCollection.countDocuments({
+          "author.email": email,
+        });
+        if (count > 0) {
+          console.log("must be 1");
+          return res
+            .status(404)
+            .send({ message: "Normal user can't post more than 1" });
+        } else {
+          const result = await articleCollection.insertOne(article);
+          return res.send(result);
+        }
+      }
     });
 
     // update viewCount article in the db
