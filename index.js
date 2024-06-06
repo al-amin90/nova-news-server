@@ -238,6 +238,18 @@ async function run() {
       res.send(result);
     });
 
+    // statics from the db
+    app.get("/statistic", async (req, res) => {
+      const users = await userCollection.countDocuments({});
+      const normalUsers = await userCollection.countDocuments({
+        premiumTaken: "",
+      });
+      const premiumUsers = await userCollection.countDocuments({
+        premiumTaken: { $ne: "" },
+      });
+      res.send({ users, normalUsers, premiumUsers });
+    });
+
     // get all approved article from  the db
     app.get("/articles", async (req, res) => {
       const { title, publisher, tag } = req.query;
@@ -253,7 +265,7 @@ async function run() {
       }
 
       if (tag) {
-        query.tags = { $elemMatch: { value: { $regex: tag, $options: "i" } } };
+        query.tags = { $elemMatch: { label: { $regex: tag, $options: "i" } } };
       }
 
       const result = await articleCollection.find(query).toArray();
