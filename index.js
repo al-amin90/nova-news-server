@@ -227,6 +227,16 @@ async function run() {
     });
 
     // --------- users related api -----------
+    // topArticle from the db
+    app.get("/topArticles", async (req, res) => {
+      const result = await articleCollection
+        .find({})
+        .sort({ viewCount: -1 })
+        .limit(6)
+        .toArray();
+      res.send(result);
+    });
+
     // get all approved article from  the db
     app.get("/articles", async (req, res) => {
       const query = { status: "approved" };
