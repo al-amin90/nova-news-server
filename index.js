@@ -227,6 +227,7 @@ async function run() {
     });
 
     // --------- users related api -----------
+
     // topArticle from the db
     app.get("/topArticles", async (req, res) => {
       const result = await articleCollection
@@ -239,7 +240,22 @@ async function run() {
 
     // get all approved article from  the db
     app.get("/articles", async (req, res) => {
-      const query = { status: "approved" };
+      const { title, publisher, tag } = req.query;
+      let query = { status: "approved" };
+      console.log(req.query);
+
+      if (title) {
+        query.title = { $regex: title, $options: "i" };
+      }
+
+      if (publisher) {
+        query["publisher.value"] = { $regex: publisher, $options: "i" };
+      }
+
+      if (tag) {
+        query.tags = { $elemMatch: { value: { $regex: tag, $options: "i" } } };
+      }
+
       const result = await articleCollection.find(query).toArray();
       res.send(result);
     });
