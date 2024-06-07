@@ -74,9 +74,6 @@ async function run() {
 
     // -------------verify premium expiration date time--------
     const verifyPremium = async (email) => {
-      // const email = req.decoded.data.email;
-      // const email = req.params.email;
-
       const user = await userCollection.findOne({ email });
 
       if (user?.premiumTaken) {
@@ -149,6 +146,13 @@ async function run() {
         $set: { premiumTaken: expirationDate.toISOString() },
       };
       const result = await userCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
+
+    app.get("/isUserPremium/:email", async (req, res) => {
+      const email = req.params.email;
+      const result = await verifyPremium(email);
+      console.log(result);
       res.send(result);
     });
 
