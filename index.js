@@ -195,8 +195,22 @@ async function run() {
 
     // get all users
     app.get("/users", verifyToken, verifyAdmin, async (req, res) => {
-      const result = await userCollection.find().toArray();
+      const page = parseInt(req.query.page) - 1;
+      const size = parseInt(req.query.size);
+      console.log(page, size);
+
+      const result = await userCollection
+        .find()
+        .skip(page * size)
+        .limit(size)
+        .toArray();
       res.send(result);
+    });
+
+    // get all users Count
+    app.get("/usersCount", verifyToken, verifyAdmin, async (req, res) => {
+      const count = await userCollection.countDocuments();
+      res.send({ count });
     });
 
     // make user admin
@@ -223,8 +237,22 @@ async function run() {
 
     // get all article from  the db
     app.get("/allArticles", verifyToken, verifyAdmin, async (req, res) => {
-      const result = await articleCollection.find().toArray();
+      const size = parseInt(req.query.size);
+      const page = parseInt(req.query.page) - 1;
+      console.log(size, page);
+
+      const result = await articleCollection
+        .find()
+        .skip(page * size)
+        .limit(size)
+        .toArray();
       res.send(result);
+    });
+
+    // get all article Count from the db
+    app.get("/allArticlesCount", async (req, res) => {
+      const count = await articleCollection.countDocuments();
+      res.send({ count });
     });
 
     // change articles state in the db
