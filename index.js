@@ -47,7 +47,7 @@ const db = client.db("nova-news");
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
 
     const userCollection = db.collection("users");
     const articleCollection = db.collection("articles");
@@ -152,11 +152,46 @@ async function run() {
     app.get("/isUserPremium/:email", async (req, res) => {
       const email = req.params.email;
       const result = await verifyPremium(email);
-      console.log(result);
       res.send(result);
     });
 
     // ----------- admin related apis ------------
+    // get all publisher info
+    app.get("/allPublisherCount", async (req, res) => {
+      const Namibian = await articleCollection.countDocuments({
+        "publisher.value": "Namibian",
+      });
+      const articleCounts = await articleCollection
+        .aggregate([
+          {
+            $group: {
+              _id: "$publisher.value", // Group by publisher name
+              articleCount: { $sum: 1 },
+            },
+          },
+          {
+            $lookup: {
+              from: "publisher",
+              localField: "_id",
+              foreignField: "name",
+              as: "publisher",
+            },
+          },
+          {
+            $unwind: "$publisher",
+          },
+          {
+            $project: {
+              _id: 0,
+              publisher: "$_id",
+              articleCount: 1,
+            },
+          },
+        ])
+        .toArray();
+
+      res.send(articleCounts);
+    });
 
     // get all users
     app.get("/users", verifyToken, verifyAdmin, async (req, res) => {
@@ -258,7 +293,6 @@ async function run() {
     app.get("/articles", async (req, res) => {
       const { title, publisher, tag } = req.query;
       let query = { status: "approved" };
-      console.log(req.query);
 
       if (title) {
         query.title = { $regex: title, $options: "i" };
@@ -283,13 +317,11 @@ async function run() {
 
       // get user Premium state
       const { isSubscription } = await verifyPremium(email);
-      console.log(isSubscription);
 
       // get the article from articles
       const query = { _id: new ObjectId(id) };
       const result = await articleCollection.findOne(query);
 
-      // console.log(result);
       if (isSubscription === true) {
         return res.send(result);
       } else {
@@ -336,7 +368,6 @@ async function run() {
           "author.email": email,
         });
         if (count > 0) {
-          console.log("must be 1");
           return res
             .status(404)
             .send({ message: "Normal user can't post more than 1" });
@@ -350,7 +381,6 @@ async function run() {
     // update viewCount article in the db
     app.patch("/articleViewCount/:id", async (req, res) => {
       const id = req.params.id;
-      console.log("called");
       const filter = { _id: new ObjectId(id) };
       const updateDoc = {
         $inc: { viewCount: 1 },
@@ -363,10 +393,10 @@ async function run() {
     });
 
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
-    console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!"
-    );
+    // await client.db("admin").command({ ping: 1 });
+    // console.log(
+    //   "Pinged your deployment. You successfully connected to MongoDB!"
+    // );
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
