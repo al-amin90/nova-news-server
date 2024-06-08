@@ -75,8 +75,9 @@ async function run() {
     // -------------verify premium expiration date time--------
     const verifyPremium = async (email) => {
       const user = await userCollection.findOne({ email });
+      // console.log(user);
 
-      if (user?.premiumTaken) {
+      if (user.premiumTaken) {
         const currentTime = new Date();
         const expirationTime = new Date(user.premiumTaken);
 
@@ -89,10 +90,13 @@ async function run() {
           console.log("use premium time end");
           return { isSubscription: false };
         } else {
+          console.log("use premium Start");
           return { isSubscription: true };
         }
+      } else {
+        console.log("it was unexpacted");
+        return { isSubscription: false };
       }
-      return { isSubscription: false };
     };
 
     // save users in the db after login and singup
@@ -239,7 +243,6 @@ async function run() {
     app.get("/allArticles", verifyToken, verifyAdmin, async (req, res) => {
       const size = parseInt(req.query.size);
       const page = parseInt(req.query.page) - 1;
-      console.log(size, page);
 
       const result = await articleCollection
         .find()
@@ -386,7 +389,8 @@ async function run() {
       const article = req.body;
       const email = req.decoded.data.email;
 
-      const { isSubscription } = await verifyPremium();
+      const { isSubscription } = await verifyPremium(email);
+      console.log(isSubscription);
 
       if (isSubscription === true) {
         const result = await articleCollection.insertOne(article);
