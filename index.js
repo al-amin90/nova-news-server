@@ -77,7 +77,7 @@ async function run() {
       const user = await userCollection.findOne({ email });
       // console.log(user);
 
-      if (user.premiumTaken) {
+      if (user?.premiumTaken) {
         const currentTime = new Date();
         const expirationTime = new Date(user.premiumTaken);
 
@@ -87,14 +87,11 @@ async function run() {
           };
 
           await userCollection.updateOne({ email }, updateDoc);
-          console.log("use premium time end");
           return { isSubscription: false };
         } else {
-          console.log("use premium Start");
           return { isSubscription: true };
         }
       } else {
-        console.log("it was unexpacted");
         return { isSubscription: false };
       }
     };
